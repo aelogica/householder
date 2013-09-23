@@ -19,9 +19,9 @@ You must have:
 
 First tell householder where your public key is:
 
-    $ householder key add <path-to-my-public-key>
+    $ householder setkey <path-to-my-public-key>
 
-This will create a symbolic link .household-key in the current directory.
+This will create a symbolic link .household-key in the current directory pointing to your public key.  This will be used to install your public key to the new machine.
 
 To create a box instance with a public-IP or fixed-IP address:
 
@@ -33,15 +33,14 @@ Where the FQDN must resolve to the IP you want the host to use.  If your DNS is 
 
 These commands will cause the following to happen:
 
-  1) download the box file to remote-host
-  2) create a virtual machine on the remote host.
-  3) modify the ovf definition in the box file, setting interface 0 to have a portmapped SSH where the port number is 2200 + the last octet of the IPv4 address.
-  4) Install a plist file: /Library/LaunchDaemons/<reverse-fqdn>.<hostname>Virtualbox.plist which will cause the vm to start automatically on boot running under the <user>.
-  5) Start the virtual machine via launchctl
-  6) Set the IP address and hostname and reboot the virtual machine
-  7) Run any bootstrap.sh script within the newly homesteaded VM
-  8) Run any bootstrap_server.sh script within the newly homesteaded VM
-  9) Reboot the VM again
+1. download the box file to remote-host
+2. create a virtual machine on the remote host.
+3. modify the ovf definition in the box file, setting interface 0 to have a p.rtmapped SSH where the port number is 2200 + the last octet of the IPv4 address.
+4. Install a plist file: /Library/LaunchDaemons/<reverse-fqdn>.<hostname>V.rtualbox.plist which will cause the vm to start automatically on boot running u.der the <user>.
+5. Start the virtual machine via launchctl
+6. Set the IP address and hostname and reboot the virtual machine
+7. Run any bootstrap_server.sh or bootstrap.sh script within the newly homesteaded VM. (if the latter, it will substitute references to "vagrant" with "deploy")
+8. Reboot the VM again and wait for it to come up.
 
 
 
