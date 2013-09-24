@@ -42,6 +42,8 @@ These commands will cause the following to happen:
 7. Run any bootstrap_server.sh or bootstrap.sh script within the newly homesteaded VM. (if the latter, it will substitute references to "vagrant" with "deploy")
 8. Reboot the VM again and wait for it to come up.
 
+Your boostrap_server.sh script should prepare the server with everything necessary to perform a cap deploy:cold if you are using Capistrano for deployment.
+
 
 
 ## Contributing
