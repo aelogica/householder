@@ -14,22 +14,17 @@ You must have:
 
   * A remote Mac OS X host with VirtualBox installed
   * ssh-access to an account on said host with the ability to run VirtualBox
+  * An ssh keypair whose public key will be installed for root on the new server
 
 ## Usage
 
-First tell householder where your public key is:
-
-    $ householder setkey <path-to-my-public-key>
-
-This will create a symbolic link .household-key in the current directory pointing to your public key.  This will be used to install your public key to the new machine.
-
 To create a box instance with a public-IP or fixed-IP address:
 
-    $ householder create <box-url> on <user>@<remote-host> as <fully-qualified-domain-name>
+    $ house <box-url> on <remote-host> under <user> as <fully-qualified-domain-name> for <path-to-my-public-key>
 
 Where the FQDN must resolve to the IP you want the host to use.  If your DNS is not set up yet, add the IP like so:
 
-    $ householder create <box-url> on <user>@<remote-host> as <fully-qualified-domain-name> with <ip-address>
+    $ house <box-url> on <remote-host> under <user> as <fully-qualified-domain-name> with <ip-address> for <path-to-my-public-key>
 
 These commands will cause the following to happen:
 
