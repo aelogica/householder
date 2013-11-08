@@ -30,8 +30,8 @@ These commands will cause the following to happen:
 
 1. download the box file to remote-host
 2. create a virtual machine on the remote host.
-3. modify the ovf definition in the box file, setting interface 0 to have a p.rtmapped SSH where the port number is 2200 + the last octet of the IPv4 address.
-4. Install a plist file: /Library/LaunchDaemons/<reverse-fqdn>.<hostname>V.rtualbox.plist which will cause the vm to start automatically on boot running u.der the <user>.
+3. modify the ovf definition in the box file, setting interface 0 to have a portmapped SSH where the port number is 2200 + the last octet of the IPv4 address.
+4. Install a plist file: /Library/LaunchDaemons/<reverse-fqdn>.<hostname>Virtualbox.plist which will cause the vm to start automatically on boot running under the <user>.
 5. Start the virtual machine via launchctl
 6. Set the IP address and hostname and reboot the virtual machine
 7. Run any bootstrap_server.sh or bootstrap.sh script within the newly homesteaded VM. (if the latter, it will substitute references to "vagrant" with "deploy")
