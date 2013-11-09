@@ -1,0 +1,12 @@
+#!/usr/bin/env ruby
+
+begin
+  require "householder"
+rescue LoadError
+  lib_path = File.expand_path('../../lib', __FILE__)
+  $:.unshift(lib_path)
+  puts LoadError.to_s
+  require "householder"
+end
+
+Householder.run(ARGV)
