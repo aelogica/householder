@@ -24,7 +24,7 @@ module Householder
 
       puts "Importing VBox appliance..."
       puts ""
-      puts ssh.exec!("VBoxManage import #{new_appliance_filename}")
+      puts ssh.exec!("VBoxManage import --options keepallmacs #{new_appliance_filename}")
       vms = ssh.exec!('VBoxManage list vms')
       vm_name = /\"(.*)\"/.match(vms.split("\n").last)[1]
 
@@ -63,6 +63,10 @@ module Householder
 
       puts ""
       puts "Done creating your VBox (#{vm_name})."
+
+      puts ""
+      puts "Starting VM..."
+      puts ssh.exec!(%Q(VBoxManage startvm "#{vm_name}" --type headless))
     end
   end
 end
