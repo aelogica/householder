@@ -23,4 +23,5 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency "minitest"
   spec.add_development_dependency "minitest-nc"
   spec.add_development_dependency "net-ssh", "~> 2.7.0"
+  spec.add_development_dependency "highline", "~> 1.6.20"
 end
