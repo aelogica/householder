@@ -7,18 +7,29 @@ module Householder
     box_url, _, remote_host, _, user, _, fqdn, _, ip_address, _, public_key_path = raw_argv
 
     appliance_filename = File.basename(box_url)
+    appliance_file_ext = File.extname(appliance_filename)
+    appliance_name = File.basename(appliance_filename, appliance_file_ext)
+    new_appliance_filename = "#{appliance_name}_#{Time.now.to_i}.#{appliance_file_ext}"
 
-    puts "\nConnecting via SSH...\n\n"
-    pass = ask("#{user}@#{remote_host}'s password: ") { |q| q.echo = false }
+    puts ""
+    puts "Connecting via SSH..."
+    puts ""
+
+    pass = ask("Enter password for #{user}@#{remote_host}: ") { |q| q.echo = false }
 
     Net::SSH.start(remote_host, user, password: pass ) do |ssh|
-      puts "Importing VM...\n\n"
-      ssh.exec!("VBoxManage import #{appliance_filename}")
+      puts "Downloading VBox Appliance..."
+      puts ssh.exec!("curl -o #{new_appliance_filename} #{box_url}")
+      puts ""
+
+      puts "Importing VBox appliance..."
+      puts ""
+      puts ssh.exec!("VBoxManage import #{new_appliance_filename}")
       vms = ssh.exec!('VBoxManage list vms')
       vm_name = /\"(.*)\"/.match(vms.split("\n").last)[1]
-      puts "Done importing VM.\n\n"
 
-      puts "Modifying VM configuration:"
+      puts ""
+      puts "Modifying VBox configuration:"
 
       # Get VM Info
       vm_info_raw = ssh.exec!(%Q(VBoxManage showvminfo "#{@vm_name}")).split("\n")
@@ -44,13 +55,14 @@ module Householder
       puts "Creating NAT on Network Adapter 1 and adding port forwarding..."
       host_port = 2222
       guest_port = 22
-      ssh.exec!(%Q(VBoxManage modifyvm "#{vm_name}" --nic1 nat --cableconnected1 on --natpf1 "guestssh,tcp,,#{host_port},,#{guest_port}"))
+      puts ssh.exec!(%Q(VBoxManage modifyvm "#{vm_name}" --nic1 nat --cableconnected1 on --natpf1 "guestssh,tcp,,#{host_port},,#{guest_port}"))
 
       puts "Creating Bridged Adapter on Network Adapter 2..."
       bridge_adapter_type = 'en1: Wi-Fi (AirPort)'
-      ssh.exec!(%Q(VBoxManage modifyvm "#{vm_name}" --nic2 bridged --bridgeadapter2 "#{bridge_adapter_type}"))
+      puts ssh.exec!(%Q(VBoxManage modifyvm "#{vm_name}" --nic2 bridged --bridgeadapter2 "#{bridge_adapter_type}"))
 
-      puts "\nDone modifying VM.\n\n"
+      puts ""
+      puts "Done creating your VBox (#{vm_name})."
     end
   end
 end
