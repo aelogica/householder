@@ -22,4 +22,5 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency "rake"
   spec.add_development_dependency "minitest"
   spec.add_development_dependency "minitest-nc"
+  spec.add_development_dependency "net-ssh", "~> 2.7.0"
 end
