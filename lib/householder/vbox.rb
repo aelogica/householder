@@ -54,6 +54,10 @@ module Householder
       @ssh.exec!(cmd)
     end
 
+    def remove_vm
+      @ssh.exec!(%Q(VBoxManage unregistervm #{@vm_name} --delete))
+    end
+
     def send_acpi_shutdown_to_vm
       @ssh.exec!(%Q(VBoxManage controlvm "#{@vm_name}" acpipowerbutton))
     end
@@ -108,13 +112,19 @@ CONFIG
               "Done modifying VM's network interfaces.")
     end
 
+    def config_fqdn(fqdn)
+      hostname = @ssh.exec!('hostname')
+      ch_exec(%Q(echo "127.0.0.1  #{fqdn}  hostname" | sudo tee -a /etc/hosts ),
+              "FQDN added.")
+    end
+
     def add_to_authorized_keys(pub_key)
       @ssh.exec!('[ ! -f ~/.ssh/authorized_keys ] && touch ~/.ssh/authorized_keys')
       @ssh.exec!(%Q(echo "#{pub_key}" >> ~/.ssh/authorized_keys))
     end
 
     def remove_downloaded_appliance
-      @ssh.exec!("rm #{downloaded_appliance_filename}"))
+      @ssh.exec!("rm -f #{downloaded_appliance_filename}")
     end
 
 

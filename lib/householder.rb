@@ -79,6 +79,9 @@ module Householder
 
         remote_guest_ssh_vbox.add_to_authorized_keys(public_key_content)
 
+        # puts "Configuring FQDN..."
+        # remote_guest_ssh_vbox.config_fqdn(fqdn)
+
         guest_ssh.loop
       end
 
@@ -94,6 +97,12 @@ module Householder
       puts "Done."
 
       ssh.loop
+
+      # TODO:
+      # Install a plist file: /Library/LaunchDaemons/.Virtualbox.plist which will cause the vm to start automatically on boot running under the.
+      # Start the virtual machine via launchctl
+      # Set the IP address and hostname and reboot the virtual machine
+      # Run any bootstrap_server.sh or bootstrap.sh script within the newly homesteaded VM. (if the latter, it will substitute references to "vagrant" with "deploy")
     end
   end
 end
