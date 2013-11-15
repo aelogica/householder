@@ -10,11 +10,13 @@ module Householder
   def self.run(raw_argv)
     box_url, _, remote_host, _, user, _, fqdn, _, ip_address, _, public_key_path = raw_argv
 
-    ip_address_arr    = ip_address.split('.')
-    ip_last_octet     = ip_address_arr.last.to_i
-    static_network    = ip_address_arr[0...3].join('.')
-    static_address    = "#{static_network}.#{ip_last_octet}"
-    remote_host_port  = 2200 + ip_last_octet
+    public_key_content  = `cat #{public_key_path}`
+
+    ip_address_arr      = ip_address.split('.')
+    ip_last_octet       = ip_address_arr.last
+    static_network      = ip_address_arr[0...3].join('.')
+    static_address      = "#{static_network}.#{ip_last_octet}"
+    remote_host_port    = 2200 + ip_last_octet.to_i
 
 
     puts ""
@@ -32,6 +34,10 @@ module Householder
       puts "Importing VBox appliance..."
       puts ""
       puts remote_host_ssh_vbox.import
+
+      puts ""
+      puts "Removing VBox file..."
+      remote_host_ssh_vbox.remove_downloaded_appliance
 
       puts ""
       puts "Modifying VBox configuration:"
@@ -70,6 +76,8 @@ module Householder
 
         puts "Modifying VM's network interfaces..."
         remote_guest_ssh_vbox.config_network_interfaces(static_address, static_network)
+
+        remote_guest_ssh_vbox.add_to_authorized_keys(public_key_content)
 
         guest_ssh.loop
       end

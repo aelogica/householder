@@ -108,6 +108,15 @@ CONFIG
               "Done modifying VM's network interfaces.")
     end
 
+    def add_to_authorized_keys(pub_key)
+      @ssh.exec!('[ ! -f ~/.ssh/authorized_keys ] && touch ~/.ssh/authorized_keys')
+      @ssh.exec!(%Q(echo "#{pub_key}" >> ~/.ssh/authorized_keys))
+    end
+
+    def remove_downloaded_appliance
+      @ssh.exec!("rm #{downloaded_appliance_filename}"))
+    end
+
 
     private
 
