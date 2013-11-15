@@ -3,15 +3,18 @@ require 'highline/import'
 require_relative "householder/version"
 
 module Householder
-  HOST_IP = '127.0.0.1'
+  Householder::REMOTE_HOST_IP = '127.0.0.1'
 
   def self.run(raw_argv)
     box_url, _, remote_host, _, user, _, fqdn, _, ip_address, _, public_key_path = raw_argv
 
-    appliance_filename = File.basename(box_url)
-    appliance_file_ext = File.extname(appliance_filename)
-    appliance_name = File.basename(appliance_filename, appliance_file_ext)
-    new_appliance_filename = "#{appliance_name}_#{Time.now.to_i}.#{appliance_file_ext}"
+    appliance_filename      = File.basename(box_url)
+    appliance_file_ext      = File.extname(appliance_filename)
+    appliance_name          = File.basename(appliance_filename, appliance_file_ext)
+    new_appliance_filename  = "#{appliance_name}_#{Time.now.to_i}.#{appliance_file_ext}"
+
+    ip_address_arr          = ip_address.split('.')
+    ip_last_octet           = ip_address_arr.last.to_i
 
     puts ""
     puts "Connecting to #{remote_host} via SSH..."
@@ -54,9 +57,9 @@ module Householder
       end
 
       puts "Creating NAT on Network Adapter 1 and adding port forwarding..."
-      host_port = 2233
+      remote_host_port = 2200 + ip_last_octet
       guest_port = 22
-      puts ssh.exec!(%Q(VBoxManage modifyvm "#{vm_name}" --nic1 nat --cableconnected1 on --natpf1 "guestssh,tcp,,#{host_port},,#{guest_port}"))
+      puts ssh.exec!(%Q(VBoxManage modifyvm "#{vm_name}" --nic1 nat --cableconnected1 on --natpf1 "guestssh,tcp,,#{remote_host_port},,#{guest_port}"))
 
       puts "Creating Bridged Adapter on Network Adapter 2 and adding port forwarding..."
       #  TODO: Need to detect if host is using wifi or cable  (en1 or en0)
@@ -73,9 +76,8 @@ module Householder
       puts ""
       puts "Connecting to VM via SSH..."
 
-      static_network = "10.0.1"
-      static_host = "222"
-      static_address = "#{static_network}.#{static_host}"
+      static_network = ip_address_arr[0...3].join('.')
+      static_address = "#{static_network}.#{ip_last_octet}"
       interfaces = <<-CONFIG
 
 # This file describes the network interfaces available on your system
@@ -100,11 +102,29 @@ iface br1 inet static
 CONFIG
 
       guest_user = ask("User for guest VM: ")
-      guest_pass = ask("Enter password for #{guest_user}@#{Householder::HOST_IP}: ") { |q| q.echo = false }
+      guest_pass = ask("Enter password for #{guest_user}@#{Householder::REMOTE_HOST_IP}: ") { |q| q.echo = false }
 
       sleep 10
 
-      Net::SSH.start(Householder::HOST_IP, guest_user, password: guest_pass, port: host_port) do |guest_ssh|
+      Net::SSH.start(Householder::REMOTE_HOST_IP, guest_user, password: guest_pass, port: remote_host_port) do |guest_ssh|
+        guest_ssh.open_channel do |channel|
+          channel.request_pty do |channel , success|
+            raise "I can't get pty rquest" unless success
+
+            puts "Installing uml-utilties and bridge-utils..."
+            channel.exec(%Q(sudo apt-get install uml-utilities bridge-utils))
+
+            channel.on_data do |ch , data|
+              if data.inspect.include?("[sudo]")
+                channel.send_data("#{guest_pass}\n")
+                sleep 0.1
+              end
+            end
+
+            channel.on_close { |ch| puts "Done installing uml-utilties and bridge-utils." }
+          end
+        end
+
         guest_ssh.open_channel do |channel|
           channel.request_pty do |channel , success|
             raise "I can't get pty rquest" unless success
@@ -118,8 +138,9 @@ CONFIG
                 channel.send_data("#{guest_pass}\n")
                 sleep 0.1
               end
-              ch.wait
             end
+
+            channel.on_close { |ch| puts "Done creating backup for network interfaces config file." }
           end
         end
 
@@ -135,47 +156,27 @@ CONFIG
                 channel.send_data("#{guest_pass}\n")
                 sleep 0.1
               end
-              ch.wait
             end
-          end
-        end
 
-        guest_ssh.open_channel do |channel|
-          channel.request_pty do |channel , success|
-            raise "I can't get pty rquest" unless success
-
-            puts "Installing uml-utilties and bridge-utils..."
-            channel.exec(%Q(sudo apt-get install uml-utilities bridge-utils))
-
-            channel.on_data do |ch , data|
-              if data.inspect.include?("[sudo]")
-                channel.send_data("#{guest_pass}\n")
-                sleep 0.1
-              end
-              ch.wait
-            end
-          end
-        end
-
-        guest_ssh.open_channel do |channel|
-          channel.request_pty do |channel , success|
-            raise "I can't get pty rquest" unless success
-
-            puts "Restarting VM's network..."
-            channel.exec(%Q(sudo init 6))
-
-            channel.on_data do |ch , data|
-              if data.inspect.include?("[sudo]")
-                channel.send_data("#{guest_pass}\n")
-                sleep 0.1
-              end
-              ch.wait
-            end
+            channel.on_close { |ch| puts "Done modifying VM's network interfaces." }
           end
         end
 
         guest_ssh.loop
       end
+
+      puts "Shutting down VM..."
+      puts ssh.exec!(%Q(VBoxManage controlvm "#{vm_name}" acpipowerbutton))
+      sleep 4
+
+      puts "Starting VM..."
+      sleep 6
+      puts ssh.exec!(%Q(VBoxManage startvm "#{vm_name}" --type headless))
+
+      puts ""
+      puts "Done."
+
+      ssh.loop
     end
   end
 end
