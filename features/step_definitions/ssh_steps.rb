@@ -13,6 +13,6 @@ When /^I disconnect$/ do
 end
 
 Then(/^I should see the remote username$/) do
-  @remote_user = ENV['REMOTE_USER']
-  steps %Q{ Then the stdout should contain "#{@remote_user}" }
+  remote_user = ENV['REMOTE_USER']
+  steps %Q{ Then the stdout should contain "#{remote_user}" }
 end

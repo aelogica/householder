@@ -5,14 +5,13 @@ HOUSE_CACHE = "#{ENV['HOME']}/.house"
 BRIDGE_INTERFACE = "en0"
 VBOX_HOST_PORT = "22"
 VBOX_GUEST_PORT = "22"
-VBOX_GUEST_USER = "vagrant"
-VBOX_GUEST_PASSWORD = "vagrant"
+VBOX_GUEST_TUNNEL_PORT = "7222"
 
 module Householder
   module CLI
     def self.help
       opts = OptionParser.new do |o|
-        o.banner = "Usage: house [-h] <box-url> <remote-user> <remote-host>"
+        o.banner = "Usage: house [-h] <box-url> <remote-user> <remote-host> <box-ip> <guest-user> <guest-password>"
         o.separator ""
         o.on("-h", "--help", "Print this help.")
         o.separator ""
@@ -20,7 +19,7 @@ module Householder
       puts opts.help
     end
 
-    def self.house(box_url, remote_user, remote_host, box_ip)
+    def self.house(box_url, remote_user, remote_host, box_ip, guest_user, guest_password)
       puts "House #{box_url} under #{remote_user} at #{remote_host} accessible through #{box_ip}"
 
       # Connects to the remote host that runs VirtualBox
@@ -31,14 +30,13 @@ module Householder
 
         vm_name = import(host_session, box_dir)
 
-        guest_port = create_nat_adapter(host_session, vm_name, box_ip)
         create_bridge_adapter(host_session, vm_name)
         start_vm(host_session, vm_name)
 
         # Connects to the guest VM running on the remote host
-        Net::SSH.start(remote_host, VBOX_GUEST_USER,
-                       password: VBOX_GUEST_PASSWORD,
-                       port: guest_port) do |guest_session|
+        Net::SSH.start(remote_host, guest_user,
+                       password: guest_password,
+                       port: VBOX_GUEST_TUNNEL_PORT) do |guest_session|
           install_bridge_utils(guest_session)
           setup_guest_network_interface(guest_session, box_ip)
           guest_session.loop
@@ -49,7 +47,7 @@ module Householder
 
         start_vm(host_session, vm_name)
         sleep 10
-        puts "Your Vagrant box '#{vm_name} has been given a home `ssh vagrant@#{box_ip}`."
+        puts "Your VirtualBox '#{vm_name}' has been given a home `ssh #{guest_user}@#{box_ip}`."
 
         host_session.loop
       end
@@ -63,11 +61,9 @@ module Householder
     end
 
     def self.download(session, box_url)
+      puts "Downloading from #{box_url}"
       box_filename = box_url.rpartition("/").last
       box_dir = "#{HOUSE_CACHE}/#{box_filename.rpartition(".").first}"
-      return box_dir if box_dir_exists?(box_dir)
-
-      puts "Downloading from #{box_url}"
       box_filepath = "#{box_dir}/#{box_filename}"
       session.exec! "mkdir -p #{box_dir}"
       session.exec! "curl -o #{box_filepath} #{box_url}"
@@ -77,25 +73,23 @@ module Householder
 
     def self.import(session, box_dir)
       appliance_name = "#{box_dir}/box.ovf"
+      puts "Importing #{appliance_name}"
       session.exec! "VBoxManage import #{appliance_name}"
       result = session.exec! "VBoxManage list vms"
       vms = result.split("\n").map { |vm| /\"(.*)\"/.match(vm)[1] }
-      vms.last
-    end
-
-    def self.create_nat_adapter(session, vm_name, box_ip)
-      forwarding_port = port_forward_for(box_ip)
-      cmd = %Q(VBoxManage modifyvm #{vm_name} --nic1 nat --cableconnected1 on --natpf1 "guestssh,tcp,,#{forwarding_port},,#{VBOX_GUEST_PORT}")
-      session.exec! cmd
-      forwarding_port
+      box_name = vms.last
+      puts "Imported as #{box_name}"
+      box_name
     end
 
     def self.create_bridge_adapter(session, vm_name)
+      puts "Creating bridge adapter for #{vm_name}"
       cmd = %Q(VBoxManage modifyvm #{vm_name} --nic2 bridged --cableconnected1 on --bridgeadapter2 en0)
       session.exec! cmd
     end
 
     def self.start_vm(session, vm_name)
+      puts "Starting #{vm_name}"
       cmd = %Q(VBoxManage startvm #{vm_name} --type headless)
       session.exec! cmd
     end
@@ -127,11 +121,13 @@ module Householder
     end
 
     def self.install_bridge_utils(session)
+      puts "Installing bridge-utils"
       cmd = %Q(sudo apt-get install uml-utilities bridge-utils)
       channel_exec! session, cmd
     end
 
     def self.setup_guest_network_interface(session, box_ip)
+      puts "Setting up guest network interface"
       static_address = box_ip
       static_network = box_ip.split(".")[0...3].join(".")
       cfg = <<-CONFIG
@@ -162,6 +158,7 @@ CONFIG
     end
 
     def self.shutdown_vm(session, vm_name)
+      puts "Shutting down #{vm_name}"
       cmd = %Q(VBoxManage controlvm #{vm_name} poweroff)
       session.exec! cmd
     end
