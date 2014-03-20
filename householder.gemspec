@@ -8,7 +8,7 @@ Gem::Specification.new do |spec|
   spec.version       = Householder::VERSION
   spec.authors       = ["Steven Talcott Smith", "Nestor G Pestelos Jr"]
   spec.email         = ["steve@aelogica.com", "nestor@aelogica.com"]
-  spec.description   = %q{Give your vagrant a home.}
+  spec.description   = %q{Give your VirtualBox a home.}
   spec.summary       = %q{This gem helps you take a Vagrant "box" style virtual machine definition and deploy it to a remote host server with a fixed IP address.}
   spec.homepage      = ""
   spec.license       = "MIT"
