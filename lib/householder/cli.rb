@@ -2,7 +2,6 @@ require 'optparse'
 require 'net/ssh'
 
 HOUSE_CACHE = "#{ENV['HOME']}/.house"
-BRIDGE_INTERFACE = "en0"
 VBOX_HOST_PORT = "22"
 VBOX_GUEST_PORT = "22"
 VBOX_GUEST_TUNNEL_PORT = "7222"
@@ -11,7 +10,7 @@ module Householder
   module CLI
     def self.help
       opts = OptionParser.new do |o|
-        o.banner = "Usage: house [-h] <box-url> <remote-user> <remote-host> <box-ip> <guest-user> <guest-password>"
+        o.banner = "Usage: house [-h] <box-url> <remote-user> <remote-host> <box-ip> <guest-user> <guest-password> <bridge-interface>"
         o.separator ""
         o.on("-h", "--help", "Print this help.")
         o.separator ""
@@ -19,7 +18,7 @@ module Householder
       puts opts.help
     end
 
-    def self.house(box_url, remote_user, remote_host, box_ip, guest_user, guest_password)
+    def self.house(box_url, remote_user, remote_host, box_ip, guest_user, guest_password, bridge_interface)
       puts "House #{box_url} under #{remote_user} at #{remote_host} accessible through #{box_ip}"
 
       # Connects to the remote host that runs VirtualBox
@@ -30,7 +29,7 @@ module Householder
 
         vm_name = import(host_session, box_dir)
 
-        create_bridge_adapter(host_session, vm_name)
+        create_bridge_adapter(host_session, vm_name, bridge_interface)
         start_vm(host_session, vm_name)
 
         # Connects to the guest VM running on the remote host
@@ -74,7 +73,7 @@ module Householder
     def self.import(session, box_dir)
       appliance_name = "#{box_dir}/box.ovf"
       puts "Importing #{appliance_name}"
-      session.exec! "VBoxManage import #{appliance_name}"
+      session.exec! %Q(VBoxManage import #{appliance_name})
       result = session.exec! "VBoxManage list vms"
       vms = result.split("\n").map { |vm| /\"(.*)\"/.match(vm)[1] }
       box_name = vms.last
@@ -82,9 +81,9 @@ module Householder
       box_name
     end
 
-    def self.create_bridge_adapter(session, vm_name)
+    def self.create_bridge_adapter(session, vm_name, bridge_interface)
       puts "Creating bridge adapter for #{vm_name}"
-      cmd = %Q(VBoxManage modifyvm #{vm_name} --nic2 bridged --cableconnected1 on --bridgeadapter2 en0)
+      cmd = %Q(VBoxManage modifyvm #{vm_name} --nic2 bridged --cableconnected1 on --bridgeadapter2 #{bridge_interface})
       session.exec! cmd
     end
 
