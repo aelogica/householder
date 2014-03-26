@@ -1,7 +1,6 @@
 require 'optparse'
 require 'net/ssh'
 
-HOUSE_CACHE = "#{ENV['HOME']}/.house"
 VBOX_HOST_PORT = "22"
 VBOX_GUEST_PORT = "22"
 VBOX_GUEST_TUNNEL_PORT = "7222"
@@ -23,9 +22,9 @@ module Householder
 
       # Connects to the remote host that runs VirtualBox
       Net::SSH.start(remote_host, remote_user) do |host_session|
-        create_house_cache(host_session)
+        house_cache_dir = create_house_cache(remote_user, host_session)
 
-        box_dir = download(host_session, box_url)
+        box_dir = download(host_session, house_cache_dir, box_url)
 
         vm_name = import(host_session, box_dir)
 
@@ -55,18 +54,20 @@ module Householder
 
     private
 
-    def self.create_house_cache(session)
-      session.exec! "mkdir -p #{HOUSE_CACHE}"
+    def self.create_house_cache(remote_user, session)
+      dir = "/Users/#{remote_user}/.house"
+      session.exec! "mkdir -p #{dir}"
+      dir
     end
 
-    def self.download(session, box_url)
-      puts "Downloading from #{box_url}"
-      box_filename = box_url.rpartition("/").last
-      box_dir = "#{HOUSE_CACHE}/#{box_filename.rpartition(".").first}"
-      box_filepath = "#{box_dir}/#{box_filename}"
+    def self.download(session, house_cache_dir, box_url)
+      puts "Downloading #{box_url}"
+      full_box_filename = box_url.rpartition("/").last
+      box_filename = full_box_filename.rpartition(".").first
+      box_dir = "#{house_cache_dir}/#{box_filename}"
       session.exec! "mkdir -p #{box_dir}"
-      session.exec! "curl -o #{box_filepath} #{box_url}"
-      session.exec! "cd #{box_dir} && tar xvf #{box_filepath} && rm #{box_filename}"
+      session.exec! "curl -o #{box_dir}/#{full_box_filename} #{box_url}"
+      session.exec! "cd #{box_dir} && tar xvf #{full_box_filename} && rm #{full_box_filename}"
       box_dir
     end
 
