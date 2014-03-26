@@ -4,7 +4,7 @@ Then(/^I should see the help text$/) do
 end
 
 When(/^I run the command to house the box$/) do
-  house = "house #{ENV['BOX_URL']} #{ENV['REMOTE_USER']} #{ENV['REMOTE_HOST']} #{ENV['BOX_IP']} #{ENV['BOX_USERNAME']} #{ENV['BOX_PASSWORD']} #{ENV['BRIDGE']}"
+  house = "house #{ENV['BOX_URL']} #{ENV['BOX_NAME']} #{ENV['REMOTE_USER']} #{ENV['REMOTE_HOST']} #{ENV['BOX_IP']} #{ENV['BOX_USERNAME']} #{ENV['BOX_PASSWORD']} #{ENV['BRIDGE']}"
   steps %Q{ When I run `#{house}` }
 end
 
