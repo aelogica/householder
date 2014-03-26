@@ -9,7 +9,7 @@ module Householder
   module CLI
     def self.help
       opts = OptionParser.new do |o|
-        o.banner = "Usage: house [-h] <box-url> <remote-user> <remote-host> <box-ip> <guest-user> <guest-password> <bridge-interface>"
+        o.banner = "Usage: house [-h] <box-url> <box-name> <remote-user> <remote-host> <box-ip> <guest-user> <guest-password> <bridge-interface>"
         o.separator ""
         o.on("-h", "--help", "Print this help.")
         o.separator ""
@@ -17,8 +17,8 @@ module Householder
       puts opts.help
     end
 
-    def self.house(box_url, remote_user, remote_host, box_ip, guest_user, guest_password, bridge_interface)
-      puts "House #{box_url} under #{remote_user} at #{remote_host} accessible through #{box_ip}"
+    def self.house(box_url, box_name, remote_user, remote_host, box_ip, guest_user, guest_password, bridge_interface)
+      puts "House #{box_url} as #{box_name} under #{remote_user} at #{remote_host} accessible through #{box_ip}"
 
       # Connects to the remote host that runs VirtualBox
       Net::SSH.start(remote_host, remote_user) do |host_session|
@@ -26,10 +26,10 @@ module Householder
 
         box_dir = download(host_session, house_cache_dir, box_url)
 
-        vm_name = import(host_session, box_dir)
+        import(host_session, box_dir, box_name)
 
-        create_bridge_adapter(host_session, vm_name, bridge_interface)
-        start_vm(host_session, vm_name)
+        create_bridge_adapter(host_session, box_name, bridge_interface)
+        start_vm(host_session, box_name)
 
         # Connects to the guest VM running on the remote host
         Net::SSH.start(remote_host, guest_user,
@@ -40,12 +40,12 @@ module Householder
           guest_session.loop
         end
 
-        shutdown_vm(host_session, vm_name)
+        shutdown_vm(host_session, box_name)
         sleep 10
 
-        start_vm(host_session, vm_name)
+        start_vm(host_session, box_name)
         sleep 10
-        puts "Your VirtualBox '#{vm_name}' has been given a home `ssh #{guest_user}@#{box_ip}`."
+        puts "Your VirtualBox '#{box_name}' has been given a home `ssh #{guest_user}@#{box_ip}`."
 
         host_session.loop
       end
@@ -71,26 +71,21 @@ module Householder
       box_dir
     end
 
-    def self.import(session, box_dir)
+    def self.import(session, box_dir, box_name)
       appliance_name = "#{box_dir}/box.ovf"
       puts "Importing #{appliance_name}"
-      session.exec! %Q(VBoxManage import #{appliance_name})
-      result = session.exec! "VBoxManage list vms"
-      vms = result.split("\n").map { |vm| /\"(.*)\"/.match(vm)[1] }
-      box_name = vms.last
-      puts "Imported as #{box_name}"
-      box_name
+      session.exec! %Q(VBoxManage import #{appliance_name} --vsys 0 --vmname #{box_name})
     end
 
-    def self.create_bridge_adapter(session, vm_name, bridge_interface)
-      puts "Creating bridge adapter for #{vm_name}"
-      cmd = %Q(VBoxManage modifyvm #{vm_name} --nic2 bridged --cableconnected1 on --bridgeadapter2 #{bridge_interface})
+    def self.create_bridge_adapter(session, box_name, bridge_interface)
+      puts "Creating bridge adapter for #{box_name}"
+      cmd = %Q(VBoxManage modifyvm #{box_name} --nic2 bridged --cableconnected1 on --bridgeadapter2 #{bridge_interface})
       session.exec! cmd
     end
 
-    def self.start_vm(session, vm_name)
-      puts "Starting #{vm_name}"
-      cmd = %Q(VBoxManage startvm #{vm_name} --type headless)
+    def self.start_vm(session, box_name)
+      puts "Starting #{box_name}"
+      cmd = %Q(VBoxManage startvm #{box_name} --type headless)
       session.exec! cmd
     end
 
@@ -157,9 +152,9 @@ CONFIG
       channel_exec! session, cmd
     end
 
-    def self.shutdown_vm(session, vm_name)
-      puts "Shutting down #{vm_name}"
-      cmd = %Q(VBoxManage controlvm #{vm_name} poweroff)
+    def self.shutdown_vm(session, box_name)
+      puts "Shutting down #{box_name}"
+      cmd = %Q(VBoxManage controlvm #{box_name} poweroff)
       session.exec! cmd
     end
 
